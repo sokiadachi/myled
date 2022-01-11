@@ -14,7 +14,7 @@ static dev_t dev;
 static struct cdev cdv; //キャラクタデバイスの情報を格納する構造体
 static struct class *cls = NULL;
 
-static ssize_t led_write(struct file* filp, const char* buf, size_t count, loft_t* pos){
+static ssize_t led_write(struct file* filp, const char* buf, size_t count, loff_t* pos){
         char c; //読み込んだ字を入れる変数
         if(copy_from_user(&c, buf, sizeof(char))) //カーネルの外からの字を取り込む
         return -EFAULT;
@@ -24,7 +24,7 @@ static ssize_t led_write(struct file* filp, const char* buf, size_t count, loft_
         return 1; //読み込んだ文字数を返す（この場合はダミーの1）
 }
 
-static ssize_t sushi_read(struct file* filp, char* buf, size_t count, loft_t* pos){
+static ssize_t sushi_read(struct file* filp, char* buf, size_t count, loff_t* pos){
         int size = 0;
         char sushi[] = {0xF0, 0x9F, 0x8D, 0xA3, 0x0A}; //寿司の絵文字のバイナリ
         if(copy_to_user(buf+size,(const char *)sushi, sizeof(sushi))){
@@ -61,7 +61,7 @@ static int __init init_mod(void){ //カーネルモジュールの初期化
                 printk(KERN_ERR "class_create failed.");
                 return PTR_ERR(cls);
         }
-        device_sreate(cls, NULL, dev, NULL, "myled%d",MINOR(dev)); //デバイス情報の作成
+        device_create(cls, NULL, dev, NULL, "myled%d",MINOR(dev)); //デバイス情報の作成
         return 0;
 }
 
