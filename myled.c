@@ -14,13 +14,22 @@ static dev_t dev;
 static struct cdev cdv; //キャラクタデバイスの情報を格納する構造体
 static struct class *cls = NULL;
 
+static volatile u32 *gpio_base = NULL; //アドレスをマッピングするための配列をグローバルで定義
+
 static ssize_t led_write(struct file* filp, const char* buf, size_t count, loff_t* pos){
         char c; //読み込んだ字を入れる変数
         if(copy_from_user(&c, buf, sizeof(char))) //カーネルの外からの字を取り込む
         return -EFAULT;
 
-        //printk(KERN_INFO "led_write is called/n");
-        printk(KERN_INFO "receive %c/n",c);
+        //printk(KERN_INFO "led_write is called\n");
+        printk(KERN_INFO "receive %c\n",c);
+
+	if(c == '0'){
+		gpio_base[10] = 1 << 25;
+	}else if(c == '1'){
+		gpio_base[7] = 1 << 25;
+	}
+
         return 1; //読み込んだ文字数を返す（この場合はダミーの1）
 }
 
@@ -62,7 +71,16 @@ static int __init init_mod(void){ //カーネルモジュールの初期化
                 return PTR_ERR(cls);
         }
         device_create(cls, NULL, dev, NULL, "myled%d",MINOR(dev)); //デバイス情報の作成
-        return 0;
+        
+	gpio_base = ioremap_nocache(0x3f200000, 0xA0); //GPIOのレジスタの最初のアドレス
+	
+	const u32 led = 25; //25番にある
+	const u32 index = led/10; //GPFSEL2
+	const u32 shift = (led%10)*3; //15bit
+	const u32 mask = ~(0x7 << shift); //
+	gpio_base[index] = (gpio_base[index] & mask) | (0x1 << shift); //001:output flag
+		
+	return 0;
 }
 
 static void __exit cleanup_mod(void){ //後始末
